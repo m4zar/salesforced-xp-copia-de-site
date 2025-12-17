@@ -230,6 +230,12 @@
                     </svg>
                 </div>
                 <input type="search" class="global-search-input" placeholder="Pesquisar no Salesforce...">
+                <button onclick="logout()" class="slds-button slds-button_neutral" style="margin-left: auto; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white;" title="Sair">
+                    <svg style="width: 16px; height: 16px; fill: white; vertical-align: middle; margin-right: 4px;" viewBox="0 0 24 24">
+                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                    </svg>
+                    Sair
+                </button>
             </div>
         </header>
         
@@ -460,11 +466,11 @@
         
         function handleLogin(event) {
             event.preventDefault();
-            
+
             const username = document.getElementById('login-username').value;
             const password = document.getElementById('login-password').value;
             const errorDiv = document.getElementById('login-error');
-            
+
             if (authenticate(username, password)) {
                 errorDiv.classList.add('hidden');
                 console.log('✅ Login bem-sucedido');
@@ -478,6 +484,19 @@
                 errorDiv.classList.remove('hidden');
                 console.log('❌ Login falhou');
             }
+        }
+
+        function logout() {
+            // Limpar todos os tokens
+            sessionStorage.removeItem(AUTH_KEY);
+            sessionStorage.removeItem(AUTH_TIMESTAMP_KEY);
+            localStorage.removeItem(AUTH_KEY);
+            localStorage.removeItem(AUTH_TIMESTAMP_KEY);
+
+            console.log('🚪 Logout realizado');
+
+            // Voltar para tela de login
+            checkAuthAndRender();
         }
         
         // ========================================
@@ -798,8 +817,12 @@
 
         // Listener de scroll infinito
         function setupInfiniteScroll() {
-            const scrollContainer = document.querySelector('.slds-table_header-fixed_container');
-            if (!scrollContainer) return;
+            // O scroll real está no .slds-scrollable_y, não no container pai
+            const scrollContainer = document.querySelector('.slds-scrollable_y');
+            if (!scrollContainer) {
+                console.warn('⚠️ Container de scroll não encontrado');
+                return;
+            }
 
             scrollContainer.addEventListener('scroll', (e) => {
                 const el = e.target;
@@ -812,6 +835,8 @@
                     }
                 }
             });
+
+            console.log('✅ Scroll infinito configurado');
         }
 
         // Timestamp dinâmico que atualiza automaticamente
@@ -834,6 +859,61 @@
 
         // === RENDERIZAÇÃO DO DETALHE (EXTREMAMENTE FIEL AO LORO 2) ===
         let currentLeadId = null;
+
+        // Helper: Renderizar HTML do detalhe do lead (usado por openLead e openLeadDirect)
+        function renderLeadDetails(lead) {
+            return `
+                <records-record-layout-block>
+                    ${buildSection("Informações do Lead", [
+                        buildRow("Nome do candidato", lead.name, "Perfil", lead.profile),
+                        buildRow("E-mail do candidato", `<a href="mailto:${lead.email}">${lead.email}</a>`, "Idade", lead.age),
+                        buildRow("Telefone do candidato", `<a href="tel:${lead.phone}">${lead.phone}</a>`, "Localização", lead.location),
+                        buildRow("Tipo de Contrato", lead.contractType, "Data da Contratação", lead.hireDate),
+                        buildRow("Status do Lead", `<span id="detail-status">${getStatusBadge(lead.status)}</span>`, "Possui vínculo com a Concorrência?", "false"),
+                        buildRow("Em qual oportunidade gostaria de atuar", "Assessor de Investimentos", "Profissão", lead.profession),
+                        buildRow("Formação Acadêmica", "Superior Completo", "Linkedin", `<a href="${lead.linkedin}" target="_blank">${lead.linkedin}</a>`),
+                        buildRow("Descrição", "", "", "")
+                    ])}
+
+                    ${buildSection("Informações de Feedback", [
+                        buildRow("Feedback geral", lead.feedback, "", "")
+                    ])}
+
+                    ${buildSection("Informações de Status", [
+                        buildRow("Status", lead.status, "Tentativa de contato", lead.contactAttempt),
+                        buildRow("Motivo do descarte", "", "Detalhe do motivo", ""),
+                        buildRow("Descrição do motivo de descarte", "", "", "")
+                    ])}
+
+                    ${buildSection("Informações do Caso", [
+                        buildRow("Número do Caso", "", "Etapa do Caso", ""),
+                        buildRow("Assunto do Caso", "", "Status do Caso", "")
+                    ])}
+
+                    ${buildSection("Informações da Certificação", [
+                        buildRow("Progresso Curso Preparatório Ancord", lead.ancordProgressFormatted, "Aprovado na ANCORD", "false"),
+                        buildRow("Envio Curso Preparatório Ancord", "", "Situação Ancord", ""),
+                        buildRow("Certificação Adicional", "", "Data da Certificação", "")
+                    ])}
+
+                    ${buildSection("Informações de prazo", [
+                        buildRow("Meus Leads", lead.id, "Data de Indicação", lead.indicationDate),
+                        buildRow("Prazo para vincular", "", "Número do caso", ""),
+                        buildRow("Data de expiração para vínculo", "", "Solicitação de Lead", "<a href='#'>SL-9021</a>"),
+                        buildRow("Prazo para demostrar interesse", "19", "Proprietário", "<a href='#'>Integração Growth</a>"),
+                        buildRow("Data expiração para demostrar interesse", "23/12/2025", "Semáforo", \`<img src="/img/samples/light_green.gif" alt="Verde" border="0">\`)
+                    ])}
+
+                    ${buildSection("Informações do Escritório", [
+                        buildRow("Nome do escritório", "PLT Investimentos", "Código do escritório", "70004")
+                    ])}
+
+                    ${buildSection("Informações do Sistema", [
+                        buildRow("Criado por", "<a href='#'>Integração Growth</a>, 02/12/2025", "", "")
+                    ])}
+                </records-record-layout-block>
+            `;
+        }
 
         function openLead(id) {
             // PROTEÇÃO: Verificar autenticação
@@ -866,60 +946,8 @@
 
             simulateNetwork("Carregando Lead", () => {
                 currentLeadId = id;
-
-                // CONSTRUÇÃO DO HTML DA PÁGINA DE DETALHES (Baseado no Loro 2)
                 const container = document.getElementById('detail-container');
-                container.innerHTML = `
-                    <records-record-layout-block>
-                        ${buildSection("Informações do Lead", [
-                            buildRow("Nome do candidato", lead.name, "Perfil", ""),
-                            buildRow("E-mail do candidato", `<a href="mailto:${lead.email}">${lead.email}</a>`, "Idade", lead.age),
-                            buildRow("Telefone do candidato", `<a href="tel:${lead.phone}">${lead.phone}</a>`, "Localização", lead.location),
-                            buildRow("Tipo de Contrato", "", "Data da Contratação", ""),
-                            buildRow("Status do Lead", `<span id="detail-status">${getStatusBadge(lead.status)}</span>`, "Possui vínculo com a Concorrência?", "false"),
-                            buildRow("Em qual oportunidade gostaria de atuar", "", "Profissão", ""),
-                            buildRow("Formação Acadêmica", "", "Linkedin", ""),
-                            buildRow("Descrição", "", "", "")
-                        ])}
-
-                        ${buildSection("Informações de Feedback", [
-                            buildRow("Feedback geral", "", "", "")
-                        ])}
-
-                        ${buildSection("Informações de Status", [
-                            buildRow("Status", lead.status, "Tentativa de contato", ""),
-                            buildRow("Motivo do descarte", "", "Detalhe do motivo", ""),
-                            buildRow("Descrição do motivo de descarte", "", "", "")
-                        ])}
-
-                        ${buildSection("Informações do Caso", [
-                            buildRow("Número do Caso", "", "Etapa do Caso", ""),
-                            buildRow("Assunto do Caso", "", "Status do Caso", "")
-                        ])}
-
-                        ${buildSection("Informações da Certificação", [
-                            buildRow("Progresso Curso Preparatório Ancord", lead.ancordProgress, "Aprovado na ANCORD", "false"),
-                            buildRow("Envio Curso Preparatório Ancord", "", "Situação Ancord", ""),
-                            buildRow("Certificação Adicional", "", "Data da Certificação", "")
-                        ])}
-
-                        ${buildSection("Informações de prazo", [
-                            buildRow("Meus Leads", lead.id, "Data de Indicação", lead.indicationDate),
-                            buildRow("Prazo para vincular", "", "Número do caso", ""),
-                            buildRow("Data de expiração para vínculo", "", "Solicitação de Lead", "<a href='#'>SL-9021</a>"),
-                            buildRow("Prazo para demostrar interesse", "19", "Proprietário", "<a href='#'>Integração Growth</a>"),
-                            buildRow("Data expiração para demostrar interesse", "23/12/2025", "Semáforo", `<img src="/img/samples/light_green.gif" alt="Verde" border="0">`)
-                        ])}
-
-                        ${buildSection("Informações do Escritório", [
-                            buildRow("Nome do escritório", "PLT Investimentos", "Código do escritório", "70004")
-                        ])}
-
-                        ${buildSection("Informações do Sistema", [
-                            buildRow("Criado por", "<a href='#'>Integração Growth</a>, 02/12/2025", "", "")
-                        ])}
-                    </records-record-layout-block>
-                `;
+                container.innerHTML = renderLeadDetails(lead);
             });
         }
 
@@ -1100,57 +1128,7 @@
 
             // Renderizar detalhes imediatamente (sem delay)
             const container = document.getElementById('detail-container');
-            container.innerHTML = `
-                <records-record-layout-block>
-                    ${buildSection("Informações do Lead", [
-                        buildRow("Nome do candidato", lead.name, "Perfil", lead.profile),
-                        buildRow("E-mail do candidato", `<a href="mailto:${lead.email}">${lead.email}</a>`, "Idade", lead.age),
-                        buildRow("Telefone do candidato", `<a href="tel:${lead.phone}">${lead.phone}</a>`, "Localização", lead.location),
-                        buildRow("Tipo de Contrato", lead.contractType, "Data da Contratação", lead.hireDate),
-                        buildRow("Status do Lead", `<span id="detail-status">${getStatusBadge(lead.status)}</span>`, "Possui vínculo com a Concorrência?", "false"),
-                        buildRow("Em qual oportunidade gostaria de atuar", "Assessor de Investimentos", "Profissão", lead.profession),
-                        buildRow("Formação Acadêmica", "Superior Completo", "Linkedin", `<a href="${lead.linkedin}" target="_blank">${lead.linkedin}</a>`),
-                        buildRow("Descrição", "", "", "")
-                    ])}
-
-                    ${buildSection("Informações de Feedback", [
-                        buildRow("Feedback geral", lead.feedback, "", "")
-                    ])}
-
-                    ${buildSection("Informações de Status", [
-                        buildRow("Status", lead.status, "Tentativa de contato", lead.contactAttempt),
-                        buildRow("Motivo do descarte", "", "Detalhe do motivo", ""),
-                        buildRow("Descrição do motivo de descarte", "", "", "")
-                    ])}
-
-                    ${buildSection("Informações do Caso", [
-                        buildRow("Número do Caso", "", "Etapa do Caso", ""),
-                        buildRow("Assunto do Caso", "", "Status do Caso", "")
-                    ])}
-
-                    ${buildSection("Informações da Certificação", [
-                        buildRow("Progresso Curso Preparatório Ancord", lead.ancordProgressFormatted, "Aprovado na ANCORD", "false"),
-                        buildRow("Envio Curso Preparatório Ancord", "", "Situação Ancord", ""),
-                        buildRow("Certificação Adicional", "", "Data da Certificação", "")
-                    ])}
-
-                    ${buildSection("Informações de prazo", [
-                        buildRow("Meus Leads", lead.id, "Data de Indicação", lead.indicationDate),
-                        buildRow("Prazo para vincular", "", "Número do caso", ""),
-                        buildRow("Data de expiração para vínculo", "", "Solicitação de Lead", "<a href='#'>SL-9021</a>"),
-                        buildRow("Prazo para demostrar interesse", "19", "Proprietário", "<a href='#'>Integração Growth</a>"),
-                        buildRow("Data expiração para demostrar interesse", "23/12/2025", "Semáforo", `<img src="/img/samples/light_green.gif" alt="Verde" border="0">`)
-                    ])}
-
-                    ${buildSection("Informações do Escritório", [
-                        buildRow("Nome do escritório", "PLT Investimentos", "Código do escritório", "70004")
-                    ])}
-
-                    ${buildSection("Informações do Sistema", [
-                        buildRow("Criado por", "<a href='#'>Integração Growth</a>, 02/12/2025", "", "")
-                    ])}
-                </records-record-layout-block>
-            `;
+            container.innerHTML = renderLeadDetails(lead);
         }
 
         // =================================================================
