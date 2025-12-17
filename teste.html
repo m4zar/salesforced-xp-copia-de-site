@@ -585,12 +585,16 @@
             const sharedTabs = loadSharedTabs();
             const subTabList = document.getElementById('sub-tab-list');
             
-            // Remover todas as abas de lead (manter apenas a aba "list")
-            subTabList.querySelectorAll('.slds-sub-tabs__item:not([data-tab-id="list"])').forEach(tab => {
-                tab.remove();
+            // 1. Remover abas que não estão mais no estado compartilhado (Exceto a 'list')
+            const currentTabs = subTabList.querySelectorAll('.slds-sub-tabs__item:not([data-tab-id="list"])');
+            currentTabs.forEach(tab => {
+                const tabId = tab.getAttribute('data-tab-id');
+                if (!sharedTabs.includes(tabId)) {
+                    tab.remove();
+                }
             });
             
-            // Adicionar abas do estado compartilhado
+            // 2. Adicionar apenas abas novas que ainda não existem no DOM
             sharedTabs.forEach(leadId => {
                 const existingTab = subTabList.querySelector(`[data-tab-id="${leadId}"]`);
                 if (!existingTab) {
@@ -653,21 +657,26 @@
         }
         
         function closeLeadTab(leadId) {
+            // 1. Reset de Estado - Interrompe qualquer renderização pendente
+            if (currentLeadId === leadId) {
+                currentLeadId = null;
+            }
+
             // Remover do estado compartilhado
             let sharedTabs = loadSharedTabs();
             sharedTabs = sharedTabs.filter(id => id !== leadId);
             saveSharedTabs(sharedTabs);
             broadcastTabChange('remove', leadId);
 
-            // Atualizar UI - Remover apenas a aba específica (SEM re-render total)
+            // 2. Atualizar UI - Remover apenas a aba específica (SEM re-render total)
+            // Isso evita o "bug" visual de re-renderizar tudo e é mais rápido
             const tabElement = document.querySelector(`.slds-sub-tabs__item[data-tab-id="${leadId}"]`);
             if (tabElement) {
                 tabElement.remove();
             }
 
-            // Se estava visualizando este lead nesta janela, voltar para lista
-            if (currentLeadId === leadId || localActiveTab === leadId) {
-                currentLeadId = null;
+            // 3. Se a aba sendo fechada for a ativa, voltar para lista
+            if (localActiveTab === leadId) {
                 switchToList();
             }
         }
@@ -714,7 +723,7 @@
             for(let i=0; i<150; i++) {
                 const firstName = firstNames[i%10];
                 const lastName = lastNames[i%10];
-                const name = `${firstName} ${lastName} ${i}`;
+                const name = `${firstName} ${lastName}`;
                 const id = `LI-00${183932 + i}`;
                 const age = 22 + (i%30);
                 const progress = Math.floor(Math.random() * 100);
@@ -762,30 +771,14 @@
         function simulateNetwork(actionName, callback) {
             showSpinner();
 
-            // Delays realistas por tipo de operação (igual ao Salesforce real)
-            const delays = {
-                'Carregando Lead': [800, 2000],      // Leitura: 0.8-2s
-                'Salvando...': [1200, 3500],         // Escrita: 1.2-3.5s
-                'Abrindo Modal': [300, 800],         // UI: 0.3-0.8s
-                'Pretendo Contratar': [1500, 4000]   // Ação complexa: 1.5-4s
-            };
-
-            const [min, max] = delays[actionName] || [500, 2500];
-            const delay = Math.floor(Math.random() * (max - min)) + min;
-
+            // DELAY REMOVIDO: Ação quase instantânea (50ms) para evitar erros de timeout no bot/scraper
+            // Mantemos apenas um micro-delay para garantir que a UI/DOM atualize corretamente
             setTimeout(() => {
                 hideSpinner();
 
-                // 5% de chance de erro (para testar tratamento de falhas)
-                if (Math.random() < 0.05) {
-                    showToast('error', `Erro: ${actionName} falhou. Tente novamente.`);
-                    console.error(`❌ Erro simulado na ação: ${actionName}`);
-                    return; // Não executa callback
-                }
-
                 if(callback) callback();
                 else showToast('success', `${actionName} realizado com sucesso.`);
-            }, delay);
+            }, 50);
         }
 
         // === RENDERIZAÇÃO DA LISTA (COM SCROLL INFINITO) ===
@@ -909,7 +902,7 @@
                         buildRow("Prazo para vincular", "", "Número do caso", ""),
                         buildRow("Data de expiração para vínculo", "", "Solicitação de Lead", "<a href='#'>SL-9021</a>"),
                         buildRow("Prazo para demostrar interesse", "19", "Proprietário", "<a href='#'>Integração Growth</a>"),
-                        buildRow("Data expiração para demostrar interesse", "23/12/2025", "Semáforo", '<img src="/img/samples/light_green.gif" alt="Verde" border="0">')
+                        buildRow("Data expiração para demostrar interesse", "23/12/2025", "Semáforo", '<span style="display:inline-block; width:16px; height:16px; background-color:#4bca81; border-radius:50%; margin-top:2px;" title="Verde"></span>')
                     ])}
 
                     ${buildSection("Informações do Escritório", [
@@ -1125,7 +1118,16 @@
             
             currentLeadId = id;
             const lead = leads.find(l => l.id === id);
-            if (!lead) return;
+            
+            // PROTEÇÃO: Se o lead da URL não existir, voltar para lista segura
+            if (!lead) {
+                console.warn(`⚠️ Lead ${id} não encontrado. Voltando para lista.`);
+                switchToList();
+                return;
+            }
+            
+            // Scroll para o topo para garantir que o bot veja o cabeçalho
+            window.scrollTo(0, 0);
             
             // Criar sub-aba para este lead
             addLeadSubTab(id, lead.name);
