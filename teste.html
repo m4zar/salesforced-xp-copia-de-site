@@ -120,7 +120,6 @@
 </head>
 <body>
 
-    <!-- TELA DE LOGIN -->
     <div id="login-screen" class="login-container hidden">
         <div class="login-box">
             <div class="slds-m-bottom_medium">
@@ -222,9 +221,7 @@
         </div>
     </div>
 
-    <!-- SISTEMA DE ABAS -->
     <div class="navexDesktopLayoutContainer app-content">
-        <!-- Global Header -->
         <header class="slds-global-header_container">
             <div class="slds-global-header">
                 <div class="slds-global-header__logo">
@@ -236,7 +233,6 @@
             </div>
         </header>
         
-        <!-- Tab Bar Principal -->
         <nav class="console-tabBar">
             <div class="slds-context-bar__primary">
                 <button class="app-launcher-trigger" title="App Launcher">⋮⋮⋮</button>
@@ -252,7 +248,6 @@
             </ul>
         </nav>
         
-        <!-- Sub-Tabs -->
         <div class="slds-sub-tabs" role="tablist" id="sub-tabs-container">
             <ul class="slds-sub-tabs__nav" id="sub-tab-list">
             <li class="slds-sub-tabs__item slds-is-active" data-tab-id="list">
@@ -264,7 +259,6 @@
             </ul>
         </div>
         
-        <!-- Workspace Container -->
         <div class="workspace-container">
             <div id="brandBand_3" class="slds-brand-band slds-brand-band_cover slds-brand-band_medium slds-template_default">
         
@@ -355,11 +349,7 @@
             </div>
         </div>
     </div>
-            </div> <!-- fim brandBand_3 -->
-        </div> <!-- fim workspace-container -->
-    </div> <!-- fim navexDesktopLayoutContainer -->
-
-    <script>
+            </div> </div> </div> <script>
         // ========================================
         // SISTEMA DE AUTENTICAÇÃO
         // ========================================
@@ -500,11 +490,12 @@
         }
         
         // Fallback: escutar mudanças no localStorage
-        window.addEventListener('storage', (event) => {
-            if (event.key === STORAGE_KEY) {
-                renderAllSubTabs();
-            }
-        });
+        // DESABILITADO: Causava re-render durante descarte, fazendo abas sumirem/aparecerem
+        // window.addEventListener('storage', (event) => {
+        //     if (event.key === STORAGE_KEY) {
+        //         renderAllSubTabs();
+        //     }
+        // });
         
         // === FUNÇÕES DE ESTADO COMPARTILHADO ===
         function loadSharedTabs() {
@@ -532,7 +523,8 @@
         
         function handleTabSync(data) {
             // Recebeu notificação de outra aba
-            renderAllSubTabs();
+            // DESABILITADO: Causava re-render durante descarte
+            // renderAllSubTabs();
         }
         
         // === FUNÇÕES DE UI DAS ABAS ===
@@ -616,6 +608,9 @@
         
         function switchToList() {
             activateSubTab('list');
+            // CORREÇÃO CRÍTICA PARA O BOT:
+            // Limpa a hash (#LI-XXX) da URL para que futuras navegações sejam detectadas
+            history.pushState("", document.title, window.location.pathname + window.location.search);
         }
         
         function closeLeadTab(leadId) {
@@ -624,10 +619,13 @@
             sharedTabs = sharedTabs.filter(id => id !== leadId);
             saveSharedTabs(sharedTabs);
             broadcastTabChange('remove', leadId);
-            
-            // Atualizar UI
-            renderAllSubTabs();
-            
+
+            // Atualizar UI - Remover apenas a aba específica (SEM re-render total)
+            const tabElement = document.querySelector(`.slds-sub-tabs__item[data-tab-id="${leadId}"]`);
+            if (tabElement) {
+                tabElement.remove();
+            }
+
             // Se estava visualizando este lead nesta janela, voltar para lista
             if (currentLeadId === leadId || localActiveTab === leadId) {
                 currentLeadId = null;
@@ -705,8 +703,7 @@
                 // <th data-label="Meus Leads"><a href="#" onclick="openLead('${l.id}')">${l.id}</a></th>
                 tr.innerHTML = `
                     <td>${idx+1}</td>
-                    <th data-label="Meus Leads"><a href="#${l.id}" onclick="openLead('${l.id}'); return false;">${l.id}</a></th> <!-- TESTE: href com ancora para nao recarregar e ser unico -->
-                    <td>${l.name}</td>
+                    <th data-label="Meus Leads"><a href="#${l.id}" onclick="openLead('${l.id}'); return false;">${l.id}</a></th> <td>${l.name}</td>
                     <td id="list-status-${l.id}">${l.status}</td>
                     <td>${l.location}</td>
                 `;
@@ -993,6 +990,24 @@
                 </records-record-layout-block>
             `;
         }
+
+        // =================================================================
+    // ATUALIZAÇÃO PARA SUPORTAR BOT "SINGLE TAB" (MESMA ABA)
+    // =================================================================
+    
+    // Isso detecta quando o bot muda a URL (ex: #LI-001) sem recarregar a página
+    window.addEventListener('hashchange', function() {
+        const leadIdHash = window.location.hash ? window.location.hash.substring(1) : null;
+        if (leadIdHash) {
+            console.log("Bot navegou para:", leadIdHash);
+            openLeadDirect(leadIdHash);
+        }
+    });
+
+    // Garante que o scroll da tabela funcione bem
+    window.addEventListener('load', function() {
+        console.log("Sistema pronto para automação Single Tab");
+    });
     </script>
 </body>
 </html>
