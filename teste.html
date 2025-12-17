@@ -215,8 +215,8 @@
                 </div>
             </div>
             <footer class="slds-modal__footer">
-                <button class="slds-button slds-button_neutral" onclick="closeModal()">Cancelar</button>
-                <button class="slds-button slds-button_brand uiButton cuf-publisherShareButton" onclick="saveDiscard()"><span dir="ltr" class=" label bBody">Salvar</span></button>
+                <button class="slds-button slds-button_neutral" onclick="closeModal()" aria-label="Cancelar e fechar modal">Cancelar</button>
+                <button class="slds-button slds-button_brand uiButton cuf-publisherShareButton" onclick="saveDiscard()" data-action-name="modal.save" aria-label="Salvar descarte"><span dir="ltr" class=" label bBody">Salvar</span></button>
             </footer>
         </div>
     </div>
@@ -241,7 +241,11 @@
             <ul class="console-tabBarItems" role="tablist">
                 <li class="oneConsoleTabItem slds-is-active" data-tab-id="leads">
                     <a class="tabHeader" href="javascript:void(0);" role="tab">
-                        <span class="tab-icon">👥</span>
+                        <span class="tab-icon">
+                            <svg class="slds-icon slds-icon_x-small" aria-hidden="true" style="width: 16px; height: 16px; fill: currentColor;">
+                                <use xlink:href="https://cdnjs.cloudflare.com/ajax/libs/design-system/2.21.0/icons/utility-sprite/svg/symbols.svg#people"></use>
+                            </svg>
+                        </span>
                         <span class="title">Meus Leads</span>
                     </a>
                 </li>
@@ -252,7 +256,11 @@
             <ul class="slds-sub-tabs__nav" id="sub-tab-list">
             <li class="slds-sub-tabs__item slds-is-active" data-tab-id="list">
                     <a class="tabHeader" href="javascript:void(0);" role="tab" onclick="switchToList()">
-                        <span class="subtab-icon">📋</span>
+                        <span class="subtab-icon">
+                            <svg class="slds-icon slds-icon_x-small" aria-hidden="true" style="width: 14px; height: 14px; fill: currentColor;">
+                                <use xlink:href="https://cdnjs.cloudflare.com/ajax/libs/design-system/2.21.0/icons/utility-sprite/svg/symbols.svg#list"></use>
+                            </svg>
+                        </span>
                         <span class="title">SL-9093 | Solicitação de Lead</span>
                     </a>
                 </li>
@@ -277,7 +285,7 @@
             <div class="listViewContainer">
                 <div class="slds-table_header-fixed_container">
                     <div class="slds-scrollable_y">
-                        <table class="slds-table slds-table_header-fixed slds-table_bordered slds-table_edit slds-table_resizable-cols" role="grid">
+                        <table class="slds-table slds-table_header-fixed slds-table_bordered slds-table_edit slds-table_resizable-cols" role="grid" aria-label="Lista de Leads" aria-rowcount="150">
                             <thead>
                                 <tr class="slds-line-height_reset">
                                     <th scope="col" style="width: 50px;"><div class="slds-cell-fixed">#</div></th>
@@ -311,9 +319,9 @@
                             <div class="slds-col slds-no-flex slds-grid slds-grid_vertical-align-center actionsContainer">
                                 <runtime_platform_actions-actions-ribbon>
                                     <ul class="slds-button-group-list">
-                                        <li class="visible"><button class="slds-button slds-button_neutral" onclick="simulateNetwork('Pretendo Contratar')">Pretendo Contratar</button></li>
-                                        <li class="visible"><button class="slds-button slds-button_neutral" name="LeadIndication__c.discardRecords" onclick="openDiscardModal()">Descartar</button></li>
-                                        <li class="visible"><button class="slds-button slds-button_neutral" onclick="backToList()">Voltar (Teste)</button></li>
+                                        <li class="visible"><button class="slds-button slds-button_neutral" onclick="simulateNetwork('Pretendo Contratar')" data-action-name="LeadIndication__c.intendToHire" aria-label="Marcar como Pretendo Contratar">Pretendo Contratar</button></li>
+                                        <li class="visible"><button class="slds-button slds-button_neutral" name="LeadIndication__c.discardRecords" onclick="openDiscardModal()" data-action-name="LeadIndication__c.discard" aria-label="Descartar Lead">Descartar</button></li>
+                                        <li class="visible"><button class="slds-button slds-button_neutral" onclick="backToList()" aria-label="Voltar para lista de leads">Voltar (Teste)</button></li>
                                     </ul>
                                 </runtime_platform_actions-actions-ribbon>
                             </div>
@@ -564,7 +572,11 @@
                     newTab.setAttribute('data-tab-id', leadId);
                     newTab.innerHTML = `
                         <a class="tabHeader" href="javascript:void(0);" role="tab" onclick="activateSubTab('${leadId}')">
-                            <span class="subtab-icon">👤</span>
+                            <span class="subtab-icon">
+                                <svg class="slds-icon slds-icon_x-small" aria-hidden="true" style="width: 14px; height: 14px; fill: currentColor;">
+                                    <use xlink:href="https://cdnjs.cloudflare.com/ajax/libs/design-system/2.21.0/icons/utility-sprite/svg/symbols.svg#user"></use>
+                                </svg>
+                            </span>
                             <span class="title">${leadId}</span>
                         </a>
                         <button class="close-btn" onclick="closeLeadTab('${leadId}'); event.stopPropagation();" title="Fechar">✕</button>
@@ -640,6 +652,18 @@
         // }
         // === GERAÇÃO DE DADOS MOCK ===
         const leads = [];
+
+        // Helper: Criar badge colorido para status
+        function getStatusBadge(status) {
+            const statusColors = {
+                'Novo': { bg: '#e8f4e8', color: '#027e46' },
+                'Em Andamento': { bg: '#fef3d9', color: '#826800' },
+                'Descartado': { bg: '#feded8', color: '#ba0517' }
+            };
+            const colors = statusColors[status] || { bg: '#e0e5ee', color: '#3e3e3c' };
+            return `<span class="slds-badge slds-badge_lightest" style="background:${colors.bg}; color:${colors.color}; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600;">${status}</span>`;
+        }
+
         function initData() {
             // PROTEÇÃO: Não carregar dados sem autenticação
             if (!isAuthenticated()) {
@@ -650,20 +674,46 @@
             const firstNames = ["Filipe", "Marcos", "Ana", "Carlos", "Beatriz", "João", "Mariana", "Pedro", "Luiza", "Gabriel"];
             const lastNames = ["Souza", "Silva", "Oliveira", "Santos", "Lima", "Pereira", "Costa", "Rodrigues", "Almeida", "Nascimento"];
             const cities = ["Belo Horizonte", "São Paulo", "Rio de Janeiro", "Curitiba", "Brasília"];
-            
+            const profiles = ["AAI Junior", "AAI Pleno", "AAI Senior"];
+            const contracts = ["CLT", "PJ"];
+            const professions = ["Analista Financeiro", "Consultor de Investimentos", "Gerente Comercial", "Analista de Mercado"];
+            const feedbacks = [
+                "Candidato demonstrou interesse e conhecimento do mercado",
+                "Possui experiência prévia com vendas e relacionamento com clientes",
+                "Perfil alinhado com valores da empresa",
+                "Boa comunicação e proatividade demonstradas na entrevista"
+            ];
+
             for(let i=0; i<150; i++) {
-                const name = `${firstNames[i%10]} ${lastNames[i%10]} ${i}`;
+                const firstName = firstNames[i%10];
+                const lastName = lastNames[i%10];
+                const name = `${firstName} ${lastName} ${i}`;
                 const id = `LI-00${183932 + i}`;
+                const age = 22 + (i%30);
+                const progress = Math.floor(Math.random() * 100);
+
+                // Datas futuras realistas
+                const hireDate = new Date(2026, 0, 15 + (i % 20));
+                const hireDateStr = hireDate.toLocaleDateString('pt-BR');
+
                 leads.push({
                     id: id,
                     name: name,
-                    email: `${name.split(' ')[0].toLowerCase()}${i}@gmail.com`,
-                    phone: `(31) 9${Math.floor(Math.random()*10000)}-${Math.floor(Math.random()*10000)}`,
-                    age: 22 + (i%30),
+                    email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@gmail.com`,
+                    phone: `(31) 9${String(8000 + i).padStart(4, '0')}-${String(1000 + (i * 13) % 9000).padStart(4, '0')}`,
+                    age: age,
                     location: cities[i%5],
                     status: i < 10 ? "Novo" : "Em Andamento",
-                    ancordProgress: Math.floor(Math.random() * 100),
-                    indicationDate: "02/12/2025"
+                    ancordProgress: progress,
+                    ancordProgressFormatted: `${progress}%`,
+                    indicationDate: "02/12/2025",
+                    profile: profiles[i % 3],
+                    contractType: contracts[i % 2],
+                    hireDate: hireDateStr,
+                    profession: professions[i % 4],
+                    linkedin: `https://linkedin.com/in/${firstName.toLowerCase()}-${lastName.toLowerCase()}-${i}`,
+                    feedback: feedbacks[i % 4],
+                    contactAttempt: `${(i % 3) + 1}ª tentativa`
                 });
             }
             renderList();
@@ -672,7 +722,7 @@
         // === SIMULAÇÃO DE REDE ===
         function showSpinner() { document.getElementById('loading-spinner').classList.remove('hidden'); }
         function hideSpinner() { document.getElementById('loading-spinner').classList.add('hidden'); }
-        
+
         function showToast(type, msg) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -684,31 +734,102 @@
 
         function simulateNetwork(actionName, callback) {
             showSpinner();
-            // Atraso variável de 500ms a 3s para testar robustez do bot
+
+            // Delays realistas por tipo de operação (igual ao Salesforce real)
+            const delays = {
+                'Carregando Lead': [800, 2000],      // Leitura: 0.8-2s
+                'Salvando...': [1200, 3500],         // Escrita: 1.2-3.5s
+                'Abrindo Modal': [300, 800],         // UI: 0.3-0.8s
+                'Pretendo Contratar': [1500, 4000]   // Ação complexa: 1.5-4s
+            };
+
+            const [min, max] = delays[actionName] || [500, 2500];
+            const delay = Math.floor(Math.random() * (max - min)) + min;
+
             setTimeout(() => {
                 hideSpinner();
+
+                // 5% de chance de erro (para testar tratamento de falhas)
+                if (Math.random() < 0.05) {
+                    showToast('error', `Erro: ${actionName} falhou. Tente novamente.`);
+                    console.error(`❌ Erro simulado na ação: ${actionName}`);
+                    return; // Não executa callback
+                }
+
                 if(callback) callback();
                 else showToast('success', `${actionName} realizado com sucesso.`);
-            }, Math.floor(Math.random() * 2500) + 500);
+            }, delay);
         }
 
-        // === RENDERIZAÇÃO DA LISTA ===
-        function renderList() {
+        // === RENDERIZAÇÃO DA LISTA (COM SCROLL INFINITO) ===
+        let currentPage = 0;
+        const PAGE_SIZE = 25;
+
+        function renderList(append = false) {
             const tbody = document.getElementById('list-table-body');
-            tbody.innerHTML = '';
-            leads.forEach((l, idx) => {
+
+            if (!append) {
+                tbody.innerHTML = '';
+                currentPage = 0;
+            }
+
+            const start = currentPage * PAGE_SIZE;
+            const end = start + PAGE_SIZE;
+            const pageLeads = leads.slice(start, end);
+
+            pageLeads.forEach((l, relativeIdx) => {
+                const idx = start + relativeIdx;
                 const tr = document.createElement('tr');
                 tr.className = 'slds-hint-parent';
-                // TESTE: href modificado para compatibilidade com bot
-                // <th data-label="Meus Leads"><a href="#" onclick="openLead('${l.id}')">${l.id}</a></th>
                 tr.innerHTML = `
                     <td>${idx+1}</td>
-                    <th data-label="Meus Leads"><a href="#${l.id}" onclick="openLead('${l.id}'); return false;">${l.id}</a></th> <td>${l.name}</td>
-                    <td id="list-status-${l.id}">${l.status}</td>
+                    <th data-label="Meus Leads"><a href="#${l.id}" onclick="openLead('${l.id}'); return false;" data-record-id="${l.id}" aria-label="Abrir lead ${l.id}">${l.id}</a></th>
+                    <td>${l.name}</td>
+                    <td id="list-status-${l.id}" data-status="${l.status}">${getStatusBadge(l.status)}</td>
                     <td>${l.location}</td>
                 `;
+                tr.setAttribute('data-row-key-value', l.id);
+                tr.setAttribute('aria-label', `Lead ${l.name}`);
                 tbody.appendChild(tr);
             });
+
+            currentPage++;
+        }
+
+        // Listener de scroll infinito
+        function setupInfiniteScroll() {
+            const scrollContainer = document.querySelector('.slds-table_header-fixed_container');
+            if (!scrollContainer) return;
+
+            scrollContainer.addEventListener('scroll', (e) => {
+                const el = e.target;
+                // Detectar se chegou perto do fim (100px antes)
+                if (el.scrollHeight - el.scrollTop <= el.clientHeight + 100) {
+                    // Se ainda tem mais leads para carregar
+                    if (currentPage * PAGE_SIZE < leads.length) {
+                        console.log(`📜 Carregando mais leads (página ${currentPage + 1})...`);
+                        renderList(true); // Append
+                    }
+                }
+            });
+        }
+
+        // Timestamp dinâmico que atualiza automaticamente
+        function updateTimestamp() {
+            const timestampEl = document.querySelector('.slds-text-body--small');
+            if (timestampEl) {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                timestampEl.textContent = `150 itens • Atualizado às ${timeStr}`;
+            }
+        }
+
+        function startTimestampUpdates() {
+            // Atualizar imediatamente
+            updateTimestamp();
+
+            // Atualizar a cada 30 segundos
+            setInterval(updateTimestamp, 30000);
         }
 
         // === RENDERIZAÇÃO DO DETALHE (EXTREMAMENTE FIEL AO LORO 2) ===
@@ -721,17 +842,30 @@
                 checkAuthAndRender();
                 return;
             }
-            
+
+            // Criar sub-aba imediatamente
+            const lead = leads.find(l => l.id === id);
+            addLeadSubTab(id, lead.name);
+
+            // Trocar para view de detalhe e mostrar skeleton loading
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById('view-detail').classList.remove('hidden');
+            document.getElementById('header-lead-id').innerText = id;
+
+            // Mostrar skeleton screen enquanto carrega
+            const container = document.getElementById('detail-container');
+            container.innerHTML = `
+                <div class="slds-is-relative" style="min-height: 400px; padding: 2rem;">
+                    <div role="status" class="slds-spinner slds-spinner_medium slds-spinner_brand">
+                        <span class="slds-assistive-text">Carregando detalhes do lead...</span>
+                        <div class="slds-spinner__dot-a"></div>
+                        <div class="slds-spinner__dot-b"></div>
+                    </div>
+                </div>
+            `;
+
             simulateNetwork("Carregando Lead", () => {
                 currentLeadId = id;
-                const lead = leads.find(l => l.id === id);
-                
-                // Criar sub-aba para este lead
-                addLeadSubTab(id, lead.name);
-                
-                document.getElementById('view-list').classList.add('hidden');
-                document.getElementById('view-detail').classList.remove('hidden');
-                document.getElementById('header-lead-id').innerText = lead.id;
 
                 // CONSTRUÇÃO DO HTML DA PÁGINA DE DETALHES (Baseado no Loro 2)
                 const container = document.getElementById('detail-container');
@@ -742,7 +876,7 @@
                             buildRow("E-mail do candidato", `<a href="mailto:${lead.email}">${lead.email}</a>`, "Idade", lead.age),
                             buildRow("Telefone do candidato", `<a href="tel:${lead.phone}">${lead.phone}</a>`, "Localização", lead.location),
                             buildRow("Tipo de Contrato", "", "Data da Contratação", ""),
-                            buildRow("Status do Lead", `<span id="detail-status">${lead.status}</span>`, "Possui vínculo com a Concorrência?", "false"),
+                            buildRow("Status do Lead", `<span id="detail-status">${getStatusBadge(lead.status)}</span>`, "Possui vínculo com a Concorrência?", "false"),
                             buildRow("Em qual oportunidade gostaria de atuar", "", "Profissão", ""),
                             buildRow("Formação Acadêmica", "", "Linkedin", ""),
                             buildRow("Descrição", "", "", "")
@@ -865,16 +999,38 @@
         }
 
         function saveDiscard() {
-            const reason = document.getElementById('discard-trigger').innerText;
-            if(reason === "-- Nenhum --") { showToast('error', 'Selecione um motivo.'); return; }
-            
+            const trigger = document.getElementById('discard-trigger');
+            const reason = trigger.innerText;
+
+            // Validação igual ao Salesforce real
+            if(reason === "-- Nenhum --") {
+                // Toast de erro
+                showToast('error', 'Erro: Campo obrigatório "Motivo do descarte" não foi preenchido.');
+
+                // Feedback visual: borda vermelha
+                trigger.style.borderColor = '#c23934';
+                trigger.style.borderWidth = '2px';
+
+                // Remover borda vermelha após 3s
+                setTimeout(() => {
+                    trigger.style.borderColor = '';
+                    trigger.style.borderWidth = '';
+                }, 3000);
+
+                return;
+            }
+
+            // Resetar borda se estava vermelha
+            trigger.style.borderColor = '';
+            trigger.style.borderWidth = '';
+
             simulateNetwork("Salvando...", () => {
                 closeModal();
                 const lead = leads.find(l => l.id === currentLeadId);
                 if(lead) {
                     lead.status = "Descartado";
-                    document.getElementById('list-status-'+lead.id).innerText = "Descartado";
-                    document.getElementById('detail-status').innerText = "Descartado";
+                    document.getElementById('list-status-'+lead.id).innerHTML = getStatusBadge("Descartado");
+                    document.getElementById('detail-status').innerHTML = getStatusBadge("Descartado");
                 }
                 showToast('success', 'Lead descartado.');
             });
@@ -895,7 +1051,13 @@
             if (isAuthenticated()) {
                 // Inicializar dados
                 initData();
-                
+
+                // Configurar scroll infinito
+                setupInfiniteScroll();
+
+                // Iniciar atualização de timestamps
+                startTimestampUpdates();
+
                 // Renderizar todas as abas já abertas (de outras janelas)
                 renderAllSubTabs();
                 
@@ -941,22 +1103,22 @@
             container.innerHTML = `
                 <records-record-layout-block>
                     ${buildSection("Informações do Lead", [
-                        buildRow("Nome do candidato", lead.name, "Perfil", ""),
+                        buildRow("Nome do candidato", lead.name, "Perfil", lead.profile),
                         buildRow("E-mail do candidato", `<a href="mailto:${lead.email}">${lead.email}</a>`, "Idade", lead.age),
                         buildRow("Telefone do candidato", `<a href="tel:${lead.phone}">${lead.phone}</a>`, "Localização", lead.location),
-                        buildRow("Tipo de Contrato", "", "Data da Contratação", ""),
-                        buildRow("Status do Lead", `<span id="detail-status">${lead.status}</span>`, "Possui vínculo com a Concorrência?", "false"),
-                        buildRow("Em qual oportunidade gostaria de atuar", "", "Profissão", ""),
-                        buildRow("Formação Acadêmica", "", "Linkedin", ""),
+                        buildRow("Tipo de Contrato", lead.contractType, "Data da Contratação", lead.hireDate),
+                        buildRow("Status do Lead", `<span id="detail-status">${getStatusBadge(lead.status)}</span>`, "Possui vínculo com a Concorrência?", "false"),
+                        buildRow("Em qual oportunidade gostaria de atuar", "Assessor de Investimentos", "Profissão", lead.profession),
+                        buildRow("Formação Acadêmica", "Superior Completo", "Linkedin", `<a href="${lead.linkedin}" target="_blank">${lead.linkedin}</a>`),
                         buildRow("Descrição", "", "", "")
                     ])}
 
                     ${buildSection("Informações de Feedback", [
-                        buildRow("Feedback geral", "", "", "")
+                        buildRow("Feedback geral", lead.feedback, "", "")
                     ])}
 
                     ${buildSection("Informações de Status", [
-                        buildRow("Status", lead.status, "Tentativa de contato", ""),
+                        buildRow("Status", lead.status, "Tentativa de contato", lead.contactAttempt),
                         buildRow("Motivo do descarte", "", "Detalhe do motivo", ""),
                         buildRow("Descrição do motivo de descarte", "", "", "")
                     ])}
@@ -967,7 +1129,7 @@
                     ])}
 
                     ${buildSection("Informações da Certificação", [
-                        buildRow("Progresso Curso Preparatório Ancord", lead.ancordProgress, "Aprovado na ANCORD", "false"),
+                        buildRow("Progresso Curso Preparatório Ancord", lead.ancordProgressFormatted, "Aprovado na ANCORD", "false"),
                         buildRow("Envio Curso Preparatório Ancord", "", "Situação Ancord", ""),
                         buildRow("Certificação Adicional", "", "Data da Certificação", "")
                     ])}
