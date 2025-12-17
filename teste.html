@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salesforce Simulation - Full Fidelity</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/design-system/2.21.0/styles/salesforce-lightning-design-system.min.css" />
+    <style>
+        body { background-color: #f3f2f2; height: 100vh; overflow: hidden; font-family: 'Salesforce Sans', Arial, sans-serif; margin: 0; padding: 0; }
+        .hidden { display: none !important; }
+        
+        /* === SISTEMA DE ABAS (Console Style) === */
+        .navexDesktopLayoutContainer { display: flex; flex-direction: column; height: 100vh; }
+        .slds-global-header_container { background: #0176d3; padding: 0 1rem; height: 48px; display: flex; align-items: center; flex-shrink: 0; }
+        .slds-global-header { display: flex; align-items: center; width: 100%; }
+        .slds-global-header__logo { width: 32px; height: 32px; margin-right: 1rem; }
+        .slds-global-header__logo svg { fill: white; width: 100%; height: 100%; }
+        .global-search-input { background: rgba(255,255,255,0.2); border: none; border-radius: 4px; padding: 6px 12px; color: white; width: 300px; }
+        .global-search-input::placeholder { color: rgba(255,255,255,0.7); }
+        
+        /* Tab Bar Principal */
+        .console-tabBar { background: #16325c; height: 40px; display: flex; align-items: center; padding: 0 0.5rem; flex-shrink: 0; }
+        .slds-context-bar__primary { display: flex; align-items: center; margin-right: 1rem; }
+        .slds-context-bar__app-name { color: white; font-weight: 600; font-size: 14px; padding: 0 12px; }
+        .app-launcher-trigger { background: none; border: none; color: white; font-size: 18px; cursor: pointer; padding: 8px; }
+        .console-tabBarItems { display: flex; list-style: none; margin: 0; padding: 0; height: 100%; align-items: flex-end; }
+        .console-tabBarItems .oneConsoleTabItem { display: flex; align-items: center; background: #22405d; border-radius: 4px 4px 0 0; margin-right: 2px; height: 32px; padding: 0 12px; cursor: pointer; }
+        .console-tabBarItems .oneConsoleTabItem.slds-is-active { background: white; }
+        .console-tabBarItems .oneConsoleTabItem .tabHeader { color: rgba(255,255,255,0.9); text-decoration: none; font-size: 13px; display: flex; align-items: center; }
+        .console-tabBarItems .oneConsoleTabItem.slds-is-active .tabHeader { color: #16325c; }
+        .console-tabBarItems .oneConsoleTabItem .tab-icon { margin-right: 6px; }
+        
+        /* Sub-Tabs */
+        .slds-sub-tabs { background: #f3f2f2; border-bottom: 1px solid #dddbda; height: 36px; display: flex; align-items: flex-end; padding: 0 0.5rem; flex-shrink: 0; }
+        .slds-sub-tabs__nav { display: flex; list-style: none; margin: 0; padding: 0; height: 100%; align-items: flex-end; }
+        .slds-sub-tabs__item { display: flex; align-items: center; background: #e0e5ee; border: 1px solid #dddbda; border-bottom: none; border-radius: 4px 4px 0 0; margin-right: 2px; height: 28px; padding: 0 10px; cursor: pointer; position: relative; }
+        .slds-sub-tabs__item.slds-is-active { background: white; border-bottom: 2px solid white; margin-bottom: -1px; z-index: 1; }
+        .slds-sub-tabs__item .tabHeader { color: #3e3e3c; text-decoration: none; font-size: 12px; display: flex; align-items: center; }
+        .slds-sub-tabs__item .subtab-icon { margin-right: 4px; }
+        .slds-sub-tabs__item .close-btn { background: none; border: none; color: #706e6b; cursor: pointer; font-size: 14px; margin-left: 8px; padding: 0 2px; border-radius: 2px; line-height: 1; }
+        .slds-sub-tabs__item .close-btn:hover { background: #dddbda; }
+        
+        /* Workspace */
+        .workspace-container { flex: 1; overflow: auto; background: #f3f2f2; }
+        .loading-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.7); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        #toast-container { position: absolute; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 10000; width: 400px; }
+        
+        /* Estilos específicos para emular a estrutura de registros do Salesforce */
+        .slds-form-element__label { color: #3e3e3c; font-size: 0.75rem; padding-right: 0.5rem; margin-bottom: 0.125rem; }
+        .test-id__field-value { color: #080707; font-size: 0.8125rem; min-height: 1.25rem; display: block; }
+        .slds-border_bottom { border-bottom: 1px solid #dddbda; }
+        .section-header-title { font-weight: 700; font-size: 1rem; line-height: 1.25; }
+        .slds-table_header-fixed_container { height: calc(100vh - 320px); overflow: auto; background: white; }
+        
+        /* UI Input Select (Modal) */
+        .uiInputSelect .uiPopupTrigger a.select { display: block; border: 1px solid #dddbda; border-radius: .25rem; background: white; padding: 0 1rem 0 .75rem; line-height: 1.875rem; min-height: calc(1.875rem + 2px); color: #181818; text-decoration: none; position: relative; }
+        .uiInputSelect .uiPopupTrigger a.select:after { content: ""; position: absolute; top: 50%; right: .75rem; transform: translateY(-50%); border-top: 4px solid black; border-left: 4px solid transparent; border-right: 4px solid transparent; }
+        .uiMenuList { display: none; background: white; border: 1px solid #dddbda; border-radius: .25rem; position: absolute; width: 100%; z-index: 9002; margin-top: 2px; max-height: 200px; overflow-y: auto; box-shadow: 0 2px 3px 0 rgba(0,0,0,.16); }
+        .uiMenuList.visible { display: block; }
+        .uiMenuList li a { display: block; padding: .5rem .75rem; color: #181818; text-decoration: none; font-size: 0.8125rem; }
+        .uiMenuList li a:hover { background-color: #f3f2f2; }
+        .modal-backdrop { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(8, 7, 7, 0.6); z-index: 9000; display: flex; align-items: center; justify-content: center; }
+        .required { color: rgb(194, 57, 52); margin-left: 0.125rem; }
+        
+        /* === SISTEMA DE AUTENTICAÇÃO === */
+        .login-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, #0176d3 0%, #005fb2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+        }
+        
+        .login-box {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            width: 400px;
+            text-align: center;
+        }
+        
+        .login-box .slds-icon {
+            fill: #0176d3;
+        }
+        
+        .login-box h1 {
+            color: #0176d3;
+            margin-top: 1rem;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .login-box .slds-form-element {
+            text-align: left;
+        }
+        
+        .login-box .slds-form-element__label {
+            font-weight: 600;
+            color: #3e3e3c;
+        }
+        
+        .login-box .slds-input {
+            width: 100%;
+        }
+        
+        .app-content {
+            display: none;
+        }
+        
+        .app-content.authenticated {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TELA DE LOGIN -->
+    <div id="login-screen" class="login-container hidden">
+        <div class="login-box">
+            <div class="slds-m-bottom_medium">
+                <svg class="slds-icon" style="width: 48px; height: 48px;" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                </svg>
+                <h1>Salesforce Simulation</h1>
+                <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">Teste de Autenticação</p>
+            </div>
+            <form id="login-form" class="slds-form">
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label" for="login-username">Usuário</label>
+                    <div class="slds-form-element__control">
+                        <input type="text" id="login-username" class="slds-input" placeholder="admin" required autocomplete="username">
+                    </div>
+                </div>
+                <div class="slds-form-element slds-m-top_small">
+                    <label class="slds-form-element__label" for="login-password">Senha</label>
+                    <div class="slds-form-element__control">
+                        <input type="password" id="login-password" class="slds-input" placeholder="••••••" required autocomplete="current-password">
+                    </div>
+                </div>
+                <div id="login-error" class="slds-text-color_error slds-m-top_x-small hidden"></div>
+                <button type="submit" class="slds-button slds-button_brand slds-m-top_medium" style="width: 100%;">
+                    <span class="slds-text-body_regular">Entrar</span>
+                </button>
+            </form>
+            <div class="slds-m-top_medium slds-text-body_small slds-text-color_weak">
+                <p>Credenciais de teste:</p>
+                <p><strong>Usuário:</strong> admin | <strong>Senha:</strong> 123456</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-spinner" class="loading-container hidden">
+        <div role="status" class="slds-spinner slds-spinner_medium slds-spinner_brand">
+            <span class="slds-assistive-text">Carregando</span>
+            <div class="slds-spinner__dot-a"></div>
+            <div class="slds-spinner__dot-b"></div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <div id="modal-discard" class="modal-backdrop hidden">
+        <div class="modal-container slds-modal__container">
+            <div class="modal-header slds-modal__header">
+                <button type="button" class="slds-button slds-button_icon slds-modal__close closeIcon slds-button_icon-bare" onclick="closeModal()">
+                    <lightning-primitive-icon variant="bare"><svg class="slds-button__icon slds-button__icon_large" aria-hidden="true"><use xlink:href="https://cdnjs.cloudflare.com/ajax/libs/design-system/2.21.0/icons/utility-sprite/svg/symbols.svg#close"></use></svg></lightning-primitive-icon>
+                    <span class="slds-assistive-text">Cancelar e fechar</span>
+                </button>
+                <h2 class="slds-modal__title slds-hyphenate">Descartar</h2>
+            </div>
+            <div class="modal-body scrollable slds-modal__content slds-p-around_medium">
+                <div class="forceChatterPublisherPresentationPanel">
+                    <div class="container activeState">
+                        <div class="container EDIT forceQuickActionLayout">
+                            <div class="slds-form form-horizontal">
+                                <div class="slds-grid slds-gutters_small forcePageBlockSectionRow">
+                                    <div class="slds-col slds-grid slds-has-flexi-truncate forcePageBlockItem">
+                                        <div class="slds-form-element slds-form-element_readonly">
+                                            <span class="test-id__field-label">Status</span>
+                                            <div class="slds-form-element__control"><span class="test-id__field-value slds-form-element__static">Novo</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="slds-grid slds-gutters_small forcePageBlockSectionRow slds-m-top_small">
+                                    <div class="slds-col slds-has-flexi-truncate forcePageBlockItem">
+                                        <div class="slds-form-element">
+                                            <div class="slds-form-element__control">
+                                                <div class="uiInput uiInputSelect forceInputPicklist">
+                                                    <span class="label inputLabel uiPicklistLabel-left form-element__label"><span>Motivo do descarte</span><span class="required">*</span></span>
+                                                    <div class="uiMenu">
+                                                        <div class="uiPopupTrigger">
+                                                            <div><a class="select" aria-required="true" aria-haspopup="true" href="javascript:void(0);" role="combobox" onclick="toggleDropdown('discard-list')" id="discard-trigger">-- Nenhum --</a></div>
+                                                        </div>
+                                                        <div class="uiMenuList" id="discard-list">
+                                                            <ul role="presentation" class="scrollable">
+                                                                <li role="presentation"><a href="javascript:void(0);" role="menuitemradio" onclick="selectOption('discard-trigger', 'discard-list', 'Não possui mais interesse em se tornar AAI')">Não possui mais interesse em se tornar AAI</a></li>
+                                                                <li role="presentation"><a href="javascript:void(0);" role="menuitemradio" onclick="selectOption('discard-trigger', 'discard-list', 'Dados Incorretos')">Dados Incorretos</a></li>
+                                                                <li role="presentation"><a href="javascript:void(0);" role="menuitemradio" onclick="selectOption('discard-trigger', 'discard-list', 'Sem resposta')">Sem resposta</a></li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <footer class="slds-modal__footer">
+                <button class="slds-button slds-button_neutral" onclick="closeModal()">Cancelar</button>
+                <button class="slds-button slds-button_brand uiButton cuf-publisherShareButton" onclick="saveDiscard()"><span dir="ltr" class=" label bBody">Salvar</span></button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- SISTEMA DE ABAS -->
+    <div class="navexDesktopLayoutContainer app-content">
+        <!-- Global Header -->
+        <header class="slds-global-header_container">
+            <div class="slds-global-header">
+                <div class="slds-global-header__logo">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="white" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                    </svg>
+                </div>
+                <input type="search" class="global-search-input" placeholder="Pesquisar no Salesforce...">
+            </div>
+        </header>
+        
+        <!-- Tab Bar Principal -->
+        <nav class="console-tabBar">
+            <div class="slds-context-bar__primary">
+                <button class="app-launcher-trigger" title="App Launcher">⋮⋮⋮</button>
+                <span class="slds-context-bar__app-name">Matcher</span>
+            </div>
+            <ul class="console-tabBarItems" role="tablist">
+                <li class="oneConsoleTabItem slds-is-active" data-tab-id="leads">
+                    <a class="tabHeader" href="javascript:void(0);" role="tab">
+                        <span class="tab-icon">👥</span>
+                        <span class="title">Meus Leads</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <!-- Sub-Tabs -->
+        <div class="slds-sub-tabs" role="tablist" id="sub-tabs-container">
+            <ul class="slds-sub-tabs__nav" id="sub-tab-list">
+            <li class="slds-sub-tabs__item slds-is-active" data-tab-id="list">
+                    <a class="tabHeader" href="javascript:void(0);" role="tab" onclick="switchToList()">
+                        <span class="subtab-icon">📋</span>
+                        <span class="title">SL-9093 | Solicitação de Lead</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Workspace Container -->
+        <div class="workspace-container">
+            <div id="brandBand_3" class="slds-brand-band slds-brand-band_cover slds-brand-band_medium slds-template_default">
+        
+    <div id="view-list" class="slds-template__container">
+            <div class="slds-page-header slds-page-header_joined slds-page-header_bleed">
+                <div class="slds-grid">
+                    <div class="slds-media slds-no-space slds-grow">
+                        <div class="slds-media__figure"><span class="slds-icon_container slds-icon-standard-lead" style="background-color: #f77e75"><svg class="slds-icon slds-icon_large" aria-hidden="true"><use xlink:href="https://cdnjs.cloudflare.com/ajax/libs/design-system/2.21.0/icons/standard-sprite/svg/symbols.svg#lead"></use></svg></span></div>
+                        <div class="slds-media__body">
+                            <h1 class="slds-page-header__title slds-truncate" title="Indicação de Leads">Indicação de Leads</h1>
+                            <p class="slds-text-body--small">150 itens • Atualizado agora</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="listViewContainer">
+                <div class="slds-table_header-fixed_container">
+                    <div class="slds-scrollable_y">
+                        <table class="slds-table slds-table_header-fixed slds-table_bordered slds-table_edit slds-table_resizable-cols" role="grid">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col" style="width: 50px;"><div class="slds-cell-fixed">#</div></th>
+                                    <th scope="col"><div class="slds-cell-fixed" title="Meus Leads">Meus Leads</div></th>
+                                    <th scope="col"><div class="slds-cell-fixed" title="Nome do candidato">Nome do candidato</div></th>
+                                    <th scope="col"><div class="slds-cell-fixed" title="Status">Status</div></th>
+                                    <th scope="col"><div class="slds-cell-fixed" title="Localização">Localização</div></th>
+                                </tr>
+                            </thead>
+                            <tbody id="list-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-detail" class="hidden oneRecordHomeFlexipage2Wrapper">
+            <div class="record-page-decorator">
+                <records-lwc-highlights-panel>
+                    <div class="highlights slds-clearfix slds-page-header slds-page-header_record-home">
+                        <div class="slds-grid primaryFieldRow">
+                            <div class="slds-media slds-no-space">
+                                <div class="highlights-icon-container slds-avatar slds-m-right_small icon" style="background-color: #f77e75"><img src="" alt="Lead Icon"></div>
+                            </div>
+                            <div class="slds-media__body">
+                                <h1>
+                                    <div class="entityNameTitle">Meu Lead</div>
+                                    <div class="slds-page-header__title slds-m-right--small slds-align-middle clip-text" id="header-lead-id">LI-000000</div>
+                                </h1>
+                            </div>
+                            <div class="slds-col slds-no-flex slds-grid slds-grid_vertical-align-center actionsContainer">
+                                <runtime_platform_actions-actions-ribbon>
+                                    <ul class="slds-button-group-list">
+                                        <li class="visible"><button class="slds-button slds-button_neutral" onclick="simulateNetwork('Pretendo Contratar')">Pretendo Contratar</button></li>
+                                        <li class="visible"><button class="slds-button slds-button_neutral" name="LeadIndication__c.discardRecords" onclick="openDiscardModal()">Descartar</button></li>
+                                        <li class="visible"><button class="slds-button slds-button_neutral" onclick="backToList()">Voltar (Teste)</button></li>
+                                    </ul>
+                                </runtime_platform_actions-actions-ribbon>
+                            </div>
+                        </div>
+                    </div>
+                </records-lwc-highlights-panel>
+
+                <div class="slds-grid slds-wrap slds-col slds-size_1-of-1 row row-main column">
+                    <div class="slds-col slds-size_1-of-1 region-main region-full-width">
+                        <div class="slds-card slds-card_boundary">
+                            <div class="slds-tabs_default">
+                                <ul class="slds-tabs_default__nav" role="tablist">
+                                    <li class="slds-tabs_default__item slds-is-active" title="Detalhes" role="presentation"><a class="slds-tabs_default__link" href="javascript:void(0);" role="tab">Detalhes</a></li>
+                                </ul>
+                                <div class="slds-tabs_default__content slds-show" role="tabpanel">
+                                    <records-lwc-detail-panel>
+                                        <div class="slds-clearfix detail-panel-root slds-card">
+                                            <div class="base-record-form-header-container slds-card__body slds-card__body_inner">
+                                                <div class="record-body-container">
+                                                    <records-lwc-record-layout>
+                                                        <forcegenerated-detailpanel_leadindication id="detail-container">
+                                                            </forcegenerated-detailpanel_leadindication>
+                                                    </records-lwc-record-layout>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </records-lwc-detail-panel>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+            </div> <!-- fim brandBand_3 -->
+        </div> <!-- fim workspace-container -->
+    </div> <!-- fim navexDesktopLayoutContainer -->
+
+    <script>
+        // ========================================
+        // SISTEMA DE AUTENTICAÇÃO
+        // ========================================
+        const AUTH_KEY = 'salesforce_session_token';
+        const AUTH_TIMESTAMP_KEY = 'salesforce_auth_timestamp';
+        const AUTH_TIMEOUT = 3600000; // 1 hora em ms
+        
+        // Credenciais de teste (em produção, usar backend)
+        const VALID_CREDENTIALS = {
+            username: 'admin',
+            password: '123456'
+        };
+        
+        function generateToken() {
+            return 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        function isAuthenticated() {
+            // CORREÇÃO PARA BOT: Em modo file://, usar APENAS localStorage (compartilhado entre abas)
+            // No Salesforce real, os cookies HTTP fazem esse papel
+            const isFileProtocol = window.location.protocol === 'file:';
+            let token, timestamp;
+
+            if (isFileProtocol) {
+                // MODO FILE:// - Simular cookies compartilhados com localStorage
+                token = localStorage.getItem(AUTH_KEY);
+                timestamp = localStorage.getItem(AUTH_TIMESTAMP_KEY);
+                console.log('🤖 Modo file:// - usando localStorage como cookies compartilhados');
+            } else {
+                // MODO HTTPS - Comportamento normal com sessionStorage + fallback
+                token = sessionStorage.getItem(AUTH_KEY);
+                timestamp = sessionStorage.getItem(AUTH_TIMESTAMP_KEY);
+
+                if (!token) {
+                    token = localStorage.getItem(AUTH_KEY);
+                    timestamp = localStorage.getItem(AUTH_TIMESTAMP_KEY);
+                    if (token && timestamp) {
+                        console.log('🔄 Sessão recuperada de outra aba (localStorage)');
+                        sessionStorage.setItem(AUTH_KEY, token);
+                        sessionStorage.setItem(AUTH_TIMESTAMP_KEY, timestamp);
+                    }
+                }
+            }
+
+            if (!token || !timestamp) {
+                return false;
+            }
+
+            // Verificar se token expirou
+            const elapsed = Date.now() - parseInt(timestamp);
+            if (elapsed > AUTH_TIMEOUT) {
+                sessionStorage.removeItem(AUTH_KEY);
+                sessionStorage.removeItem(AUTH_TIMESTAMP_KEY);
+                localStorage.removeItem(AUTH_KEY);
+                localStorage.removeItem(AUTH_TIMESTAMP_KEY);
+                return false;
+            }
+
+            return true;
+        }
+        
+        function authenticate(username, password) {
+            if (username === VALID_CREDENTIALS.username &&
+                password === VALID_CREDENTIALS.password) {
+                const token = generateToken();
+                const timestamp = Date.now().toString();
+
+                // SEMPRE salvar no localStorage (compartilhado entre abas)
+                localStorage.setItem(AUTH_KEY, token);
+                localStorage.setItem(AUTH_TIMESTAMP_KEY, timestamp);
+
+                // sessionStorage só em modo HTTPS (em file:// não é necessário)
+                if (window.location.protocol !== 'file:') {
+                    sessionStorage.setItem(AUTH_KEY, token);
+                    sessionStorage.setItem(AUTH_TIMESTAMP_KEY, timestamp);
+                }
+
+                console.log('✅ Token salvo em localStorage (compartilhado entre abas)');
+                return true;
+            }
+            return false;
+        }
+        
+        function checkAuthAndRender() {
+            const loginScreen = document.getElementById('login-screen');
+            const appContent = document.querySelector('.app-content');
+            
+            if (isAuthenticated()) {
+                // Usuário autenticado - mostrar aplicação
+                loginScreen.classList.add('hidden');
+                appContent.classList.add('authenticated');
+                console.log('✅ Autenticação válida - acesso liberado');
+            } else {
+                // Não autenticado - mostrar tela de login
+                loginScreen.classList.remove('hidden');
+                appContent.classList.remove('authenticated');
+                console.log('🚫 Sem autenticação - acesso bloqueado');
+            }
+        }
+        
+        function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            const errorDiv = document.getElementById('login-error');
+            
+            if (authenticate(username, password)) {
+                errorDiv.classList.add('hidden');
+                console.log('✅ Login bem-sucedido');
+                checkAuthAndRender();
+                // Inicializar dados após login
+                if (typeof initData === 'function') {
+                    initData();
+                }
+            } else {
+                errorDiv.textContent = 'Usuário ou senha inválidos';
+                errorDiv.classList.remove('hidden');
+                console.log('❌ Login falhou');
+            }
+        }
+        
+        // ========================================
+        // === SISTEMA DE ABAS COMPARTILHADO (localStorage + BroadcastChannel) ===
+        const STORAGE_KEY = 'salesforce_open_tabs';
+        const CHANNEL_NAME = 'salesforce_tabs_sync';
+        let tabChannel = null;
+        let localActiveTab = null; // Qual aba está ativa NESTA janela
+        
+        // Inicializar BroadcastChannel (para comunicação em tempo real entre abas)
+        try {
+            tabChannel = new BroadcastChannel(CHANNEL_NAME);
+            tabChannel.onmessage = (event) => {
+                handleTabSync(event.data);
+            };
+        } catch (e) {
+            console.log('BroadcastChannel não suportado, usando apenas localStorage');
+        }
+        
+        // Fallback: escutar mudanças no localStorage
+        window.addEventListener('storage', (event) => {
+            if (event.key === STORAGE_KEY) {
+                renderAllSubTabs();
+            }
+        });
+        
+        // === FUNÇÕES DE ESTADO COMPARTILHADO ===
+        function loadSharedTabs() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+        
+        function saveSharedTabs(tabs) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs));
+            } catch (e) {
+                console.error('Erro ao salvar tabs:', e);
+            }
+        }
+        
+        function broadcastTabChange(action, leadId) {
+            if (tabChannel) {
+                tabChannel.postMessage({ action, leadId, timestamp: Date.now() });
+            }
+        }
+        
+        function handleTabSync(data) {
+            // Recebeu notificação de outra aba
+            renderAllSubTabs();
+        }
+        
+        // === FUNÇÕES DE UI DAS ABAS ===
+        function addLeadSubTab(leadId, leadName) {
+            // Carregar estado compartilhado
+            let sharedTabs = loadSharedTabs();
+            
+            // Verificar se já existe
+            if (!sharedTabs.includes(leadId)) {
+                sharedTabs.push(leadId);
+                saveSharedTabs(sharedTabs);
+                broadcastTabChange('add', leadId);
+            }
+            
+            // Renderizar todas as abas (incluindo a nova)
+            renderAllSubTabs();
+            
+            // Ativar esta aba localmente
+            activateSubTab(leadId);
+        }
+        
+        function renderAllSubTabs() {
+            const sharedTabs = loadSharedTabs();
+            const subTabList = document.getElementById('sub-tab-list');
+            
+            // Remover todas as abas de lead (manter apenas a aba "list")
+            subTabList.querySelectorAll('.slds-sub-tabs__item:not([data-tab-id="list"])').forEach(tab => {
+                tab.remove();
+            });
+            
+            // Adicionar abas do estado compartilhado
+            sharedTabs.forEach(leadId => {
+                const existingTab = subTabList.querySelector(`[data-tab-id="${leadId}"]`);
+                if (!existingTab) {
+                    const newTab = document.createElement('li');
+                    newTab.className = 'slds-sub-tabs__item';
+                    newTab.setAttribute('data-tab-id', leadId);
+                    newTab.innerHTML = `
+                        <a class="tabHeader" href="javascript:void(0);" role="tab" onclick="activateSubTab('${leadId}')">
+                            <span class="subtab-icon">👤</span>
+                            <span class="title">${leadId}</span>
+                        </a>
+                        <button class="close-btn" onclick="closeLeadTab('${leadId}'); event.stopPropagation();" title="Fechar">✕</button>
+                    `;
+                    subTabList.appendChild(newTab);
+                }
+            });
+            
+            // Manter a aba ativa desta janela
+            if (localActiveTab) {
+                highlightActiveTab(localActiveTab);
+            }
+        }
+        
+        function highlightActiveTab(tabId) {
+            // Remover active de todas as sub-tabs
+            document.querySelectorAll('.slds-sub-tabs__item').forEach(tab => {
+                tab.classList.remove('slds-is-active');
+            });
+            
+            // Adicionar active na aba selecionada
+            const selectedTab = document.querySelector(`.slds-sub-tabs__item[data-tab-id="${tabId}"]`);
+            if (selectedTab) {
+                selectedTab.classList.add('slds-is-active');
+            }
+        }
+        
+        function activateSubTab(tabId) {
+            localActiveTab = tabId;
+            highlightActiveTab(tabId);
+            
+            // Mostrar view correspondente
+            if (tabId === 'list') {
+                document.getElementById('view-list').classList.remove('hidden');
+                document.getElementById('view-detail').classList.add('hidden');
+            } else {
+                document.getElementById('view-list').classList.add('hidden');
+                document.getElementById('view-detail').classList.remove('hidden');
+            }
+        }
+        
+        function switchToList() {
+            activateSubTab('list');
+        }
+        
+        function closeLeadTab(leadId) {
+            // Remover do estado compartilhado
+            let sharedTabs = loadSharedTabs();
+            sharedTabs = sharedTabs.filter(id => id !== leadId);
+            saveSharedTabs(sharedTabs);
+            broadcastTabChange('remove', leadId);
+            
+            // Atualizar UI
+            renderAllSubTabs();
+            
+            // Se estava visualizando este lead nesta janela, voltar para lista
+            if (currentLeadId === leadId || localActiveTab === leadId) {
+                currentLeadId = null;
+                switchToList();
+            }
+        }
+        
+        // Limpar abas ao iniciar nova sessão (opcional - descomentar se quiser)
+        // function clearAllTabs() {
+        //     localStorage.removeItem(STORAGE_KEY);
+        //     renderAllSubTabs();
+        // }
+        // === GERAÇÃO DE DADOS MOCK ===
+        const leads = [];
+        function initData() {
+            // PROTEÇÃO: Não carregar dados sem autenticação
+            if (!isAuthenticated()) {
+                console.warn('⚠️ Tentativa de carregar dados sem autenticação - BLOQUEADO');
+                return;
+            }
+            
+            const firstNames = ["Filipe", "Marcos", "Ana", "Carlos", "Beatriz", "João", "Mariana", "Pedro", "Luiza", "Gabriel"];
+            const lastNames = ["Souza", "Silva", "Oliveira", "Santos", "Lima", "Pereira", "Costa", "Rodrigues", "Almeida", "Nascimento"];
+            const cities = ["Belo Horizonte", "São Paulo", "Rio de Janeiro", "Curitiba", "Brasília"];
+            
+            for(let i=0; i<150; i++) {
+                const name = `${firstNames[i%10]} ${lastNames[i%10]} ${i}`;
+                const id = `LI-00${183932 + i}`;
+                leads.push({
+                    id: id,
+                    name: name,
+                    email: `${name.split(' ')[0].toLowerCase()}${i}@gmail.com`,
+                    phone: `(31) 9${Math.floor(Math.random()*10000)}-${Math.floor(Math.random()*10000)}`,
+                    age: 22 + (i%30),
+                    location: cities[i%5],
+                    status: i < 10 ? "Novo" : "Em Andamento",
+                    ancordProgress: Math.floor(Math.random() * 100),
+                    indicationDate: "02/12/2025"
+                });
+            }
+            renderList();
+        }
+
+        // === SIMULAÇÃO DE REDE ===
+        function showSpinner() { document.getElementById('loading-spinner').classList.remove('hidden'); }
+        function hideSpinner() { document.getElementById('loading-spinner').classList.add('hidden'); }
+        
+        function showToast(type, msg) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `slds-notify slds-notify_toast slds-theme_${type}`;
+            toast.innerHTML = `<div class="slds-notify__content"><h2 class="slds-text-heading_small">${msg}</h2></div>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        function simulateNetwork(actionName, callback) {
+            showSpinner();
+            // Atraso variável de 500ms a 3s para testar robustez do bot
+            setTimeout(() => {
+                hideSpinner();
+                if(callback) callback();
+                else showToast('success', `${actionName} realizado com sucesso.`);
+            }, Math.floor(Math.random() * 2500) + 500);
+        }
+
+        // === RENDERIZAÇÃO DA LISTA ===
+        function renderList() {
+            const tbody = document.getElementById('list-table-body');
+            tbody.innerHTML = '';
+            leads.forEach((l, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = 'slds-hint-parent';
+                // TESTE: href modificado para compatibilidade com bot
+                // <th data-label="Meus Leads"><a href="#" onclick="openLead('${l.id}')">${l.id}</a></th>
+                tr.innerHTML = `
+                    <td>${idx+1}</td>
+                    <th data-label="Meus Leads"><a href="#${l.id}" onclick="openLead('${l.id}'); return false;">${l.id}</a></th> <!-- TESTE: href com ancora para nao recarregar e ser unico -->
+                    <td>${l.name}</td>
+                    <td id="list-status-${l.id}">${l.status}</td>
+                    <td>${l.location}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // === RENDERIZAÇÃO DO DETALHE (EXTREMAMENTE FIEL AO LORO 2) ===
+        let currentLeadId = null;
+
+        function openLead(id) {
+            // PROTEÇÃO: Verificar autenticação
+            if (!isAuthenticated()) {
+                showToast('error', 'Sessão expirada. Faça login novamente.');
+                checkAuthAndRender();
+                return;
+            }
+            
+            simulateNetwork("Carregando Lead", () => {
+                currentLeadId = id;
+                const lead = leads.find(l => l.id === id);
+                
+                // Criar sub-aba para este lead
+                addLeadSubTab(id, lead.name);
+                
+                document.getElementById('view-list').classList.add('hidden');
+                document.getElementById('view-detail').classList.remove('hidden');
+                document.getElementById('header-lead-id').innerText = lead.id;
+
+                // CONSTRUÇÃO DO HTML DA PÁGINA DE DETALHES (Baseado no Loro 2)
+                const container = document.getElementById('detail-container');
+                container.innerHTML = `
+                    <records-record-layout-block>
+                        ${buildSection("Informações do Lead", [
+                            buildRow("Nome do candidato", lead.name, "Perfil", ""),
+                            buildRow("E-mail do candidato", `<a href="mailto:${lead.email}">${lead.email}</a>`, "Idade", lead.age),
+                            buildRow("Telefone do candidato", `<a href="tel:${lead.phone}">${lead.phone}</a>`, "Localização", lead.location),
+                            buildRow("Tipo de Contrato", "", "Data da Contratação", ""),
+                            buildRow("Status do Lead", `<span id="detail-status">${lead.status}</span>`, "Possui vínculo com a Concorrência?", "false"),
+                            buildRow("Em qual oportunidade gostaria de atuar", "", "Profissão", ""),
+                            buildRow("Formação Acadêmica", "", "Linkedin", ""),
+                            buildRow("Descrição", "", "", "")
+                        ])}
+
+                        ${buildSection("Informações de Feedback", [
+                            buildRow("Feedback geral", "", "", "")
+                        ])}
+
+                        ${buildSection("Informações de Status", [
+                            buildRow("Status", lead.status, "Tentativa de contato", ""),
+                            buildRow("Motivo do descarte", "", "Detalhe do motivo", ""),
+                            buildRow("Descrição do motivo de descarte", "", "", "")
+                        ])}
+
+                        ${buildSection("Informações do Caso", [
+                            buildRow("Número do Caso", "", "Etapa do Caso", ""),
+                            buildRow("Assunto do Caso", "", "Status do Caso", "")
+                        ])}
+
+                        ${buildSection("Informações da Certificação", [
+                            buildRow("Progresso Curso Preparatório Ancord", lead.ancordProgress, "Aprovado na ANCORD", "false"),
+                            buildRow("Envio Curso Preparatório Ancord", "", "Situação Ancord", ""),
+                            buildRow("Certificação Adicional", "", "Data da Certificação", "")
+                        ])}
+
+                        ${buildSection("Informações de prazo", [
+                            buildRow("Meus Leads", lead.id, "Data de Indicação", lead.indicationDate),
+                            buildRow("Prazo para vincular", "", "Número do caso", ""),
+                            buildRow("Data de expiração para vínculo", "", "Solicitação de Lead", "<a href='#'>SL-9021</a>"),
+                            buildRow("Prazo para demostrar interesse", "19", "Proprietário", "<a href='#'>Integração Growth</a>"),
+                            buildRow("Data expiração para demostrar interesse", "23/12/2025", "Semáforo", `<img src="/img/samples/light_green.gif" alt="Verde" border="0">`)
+                        ])}
+
+                        ${buildSection("Informações do Escritório", [
+                            buildRow("Nome do escritório", "PLT Investimentos", "Código do escritório", "70004")
+                        ])}
+
+                        ${buildSection("Informações do Sistema", [
+                            buildRow("Criado por", "<a href='#'>Integração Growth</a>, 02/12/2025", "", "")
+                        ])}
+                    </records-record-layout-block>
+                `;
+            });
+        }
+
+        // Funções auxiliares para gerar HTML sujo do Salesforce
+        function buildSection(title, rows) {
+            return `
+            <records-record-layout-section>
+                <div class="test-id__section slds-section has-header slds-is-open slds-m-vertical_none">
+                    <h3 class="test-id__section-header-container slds-section__title">
+                        <button class="test-id__section-header-button slds-section__title-action slds-button">
+                            <span class="test-id__section-header-title">${title}</span>
+                        </button>
+                    </h3>
+                    <div class="test-id__section-content slds-section__content">
+                        <div class="slds-form" role="list">${rows.join('')}</div>
+                    </div>
+                </div>
+            </records-record-layout-section>`;
+        }
+
+        function buildRow(label1, val1, label2, val2) {
+            return `
+            <records-record-layout-row class="slds-form__row">
+                <div class="slds-grid slds-size_1-of-1">
+                    ${buildItem(label1, val1)}
+                    ${label2 ? buildItem(label2, val2) : ''}
+                </div>
+            </records-record-layout-row>`;
+        }
+
+        function buildItem(label, value) {
+            return `
+            <records-record-layout-item class="slds-form__item slds-no-space slds-size_1-of-2" field-label="${label}">
+                <div class="slds-grid slds-size_1-of-1 label-inline">
+                    <div class="slds-form-element slds-hint-parent test-id__output-root slds-form-element_readonly slds-form-element_horizontal">
+                        <div class="test-id__field-label-container slds-form-element__label">
+                            <span class="test-id__field-label">${label}</span>
+                        </div>
+                        <div class="slds-form-element__control">
+                            <span class="test-id__field-value slds-form-element__static slds-grow">
+                                <lightning-formatted-text>${value}</lightning-formatted-text>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </records-record-layout-item>`;
+        }
+
+        function backToList() {
+            // Fecha a aba atual e volta para lista
+            if (currentLeadId) {
+                closeLeadTab(currentLeadId);
+            } else {
+                switchToList();
+            }
+        }
+
+        // === LÓGICA DO MODAL ===
+        function openDiscardModal() {
+            simulateNetwork("Abrindo Modal", () => {
+                document.getElementById('modal-discard').classList.remove('hidden');
+                document.getElementById('discard-trigger').innerText = "-- Nenhum --";
+            });
+        }
+
+        function closeModal() { document.getElementById('modal-discard').classList.add('hidden'); }
+
+        function toggleDropdown(id) {
+            const el = document.getElementById(id);
+            document.querySelectorAll('.uiMenuList').forEach(m => { if(m.id!==id) m.classList.remove('visible'); });
+            el.classList.toggle('visible');
+        }
+
+        function selectOption(triggerId, listId, val) {
+            document.getElementById(triggerId).innerText = val;
+            document.getElementById(listId).classList.remove('visible');
+        }
+
+        function saveDiscard() {
+            const reason = document.getElementById('discard-trigger').innerText;
+            if(reason === "-- Nenhum --") { showToast('error', 'Selecione um motivo.'); return; }
+            
+            simulateNetwork("Salvando...", () => {
+                closeModal();
+                const lead = leads.find(l => l.id === currentLeadId);
+                if(lead) {
+                    lead.status = "Descartado";
+                    document.getElementById('list-status-'+lead.id).innerText = "Descartado";
+                    document.getElementById('detail-status').innerText = "Descartado";
+                }
+                showToast('success', 'Lead descartado.');
+            });
+        }
+
+        // Handle leadId from URL on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. INICIALIZAR SISTEMA DE AUTENTICAÇÃO (PRIMEIRO)
+            const loginForm = document.getElementById('login-form');
+            if (loginForm) {
+                loginForm.addEventListener('submit', handleLogin);
+            }
+            
+            // 2. VERIFICAR AUTENTICAÇÃO
+            checkAuthAndRender();
+            
+            // 3. SE AUTENTICADO, INICIALIZAR DADOS E APP
+            if (isAuthenticated()) {
+                // Inicializar dados
+                initData();
+                
+                // Renderizar todas as abas já abertas (de outras janelas)
+                renderAllSubTabs();
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const leadIdQuery = urlParams.get('leadId');
+                // Suporte também para hash (ex: teste.html#LI-123456) usado pelo bot
+                const leadIdHash = window.location.hash ? window.location.hash.substring(1) : null;
+                
+                const leadId = leadIdQuery || leadIdHash;
+                
+                if (leadId) {
+                    // Bot navegou direto para o lead
+                    openLeadDirect(leadId);
+                } else {
+                    // Navegação normal - ativar aba "Lista"
+                    activateSubTab('list');
+                }
+            }
+        });
+        
+        // Função para abrir lead diretamente (usado quando bot navega por URL)
+        function openLeadDirect(id) {
+            // PROTEÇÃO: Verificar autenticação
+            if (!isAuthenticated()) {
+                console.error('❌ Tentativa de acesso direto sem autenticação - BLOQUEADO');
+                checkAuthAndRender();
+                return;
+            }
+            
+            currentLeadId = id;
+            const lead = leads.find(l => l.id === id);
+            if (!lead) return;
+            
+            // Criar sub-aba para este lead
+            addLeadSubTab(id, lead.name);
+            
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById('view-detail').classList.remove('hidden');
+            document.getElementById('header-lead-id').innerText = lead.id;
+
+            // Renderizar detalhes imediatamente (sem delay)
+            const container = document.getElementById('detail-container');
+            container.innerHTML = `
+                <records-record-layout-block>
+                    ${buildSection("Informações do Lead", [
+                        buildRow("Nome do candidato", lead.name, "Perfil", ""),
+                        buildRow("E-mail do candidato", `<a href="mailto:${lead.email}">${lead.email}</a>`, "Idade", lead.age),
+                        buildRow("Telefone do candidato", `<a href="tel:${lead.phone}">${lead.phone}</a>`, "Localização", lead.location),
+                        buildRow("Tipo de Contrato", "", "Data da Contratação", ""),
+                        buildRow("Status do Lead", `<span id="detail-status">${lead.status}</span>`, "Possui vínculo com a Concorrência?", "false"),
+                        buildRow("Em qual oportunidade gostaria de atuar", "", "Profissão", ""),
+                        buildRow("Formação Acadêmica", "", "Linkedin", ""),
+                        buildRow("Descrição", "", "", "")
+                    ])}
+
+                    ${buildSection("Informações de Feedback", [
+                        buildRow("Feedback geral", "", "", "")
+                    ])}
+
+                    ${buildSection("Informações de Status", [
+                        buildRow("Status", lead.status, "Tentativa de contato", ""),
+                        buildRow("Motivo do descarte", "", "Detalhe do motivo", ""),
+                        buildRow("Descrição do motivo de descarte", "", "", "")
+                    ])}
+
+                    ${buildSection("Informações do Caso", [
+                        buildRow("Número do Caso", "", "Etapa do Caso", ""),
+                        buildRow("Assunto do Caso", "", "Status do Caso", "")
+                    ])}
+
+                    ${buildSection("Informações da Certificação", [
+                        buildRow("Progresso Curso Preparatório Ancord", lead.ancordProgress, "Aprovado na ANCORD", "false"),
+                        buildRow("Envio Curso Preparatório Ancord", "", "Situação Ancord", ""),
+                        buildRow("Certificação Adicional", "", "Data da Certificação", "")
+                    ])}
+
+                    ${buildSection("Informações de prazo", [
+                        buildRow("Meus Leads", lead.id, "Data de Indicação", lead.indicationDate),
+                        buildRow("Prazo para vincular", "", "Número do caso", ""),
+                        buildRow("Data de expiração para vínculo", "", "Solicitação de Lead", "<a href='#'>SL-9021</a>"),
+                        buildRow("Prazo para demostrar interesse", "19", "Proprietário", "<a href='#'>Integração Growth</a>"),
+                        buildRow("Data expiração para demostrar interesse", "23/12/2025", "Semáforo", `<img src="/img/samples/light_green.gif" alt="Verde" border="0">`)
+                    ])}
+
+                    ${buildSection("Informações do Escritório", [
+                        buildRow("Nome do escritório", "PLT Investimentos", "Código do escritório", "70004")
+                    ])}
+
+                    ${buildSection("Informações do Sistema", [
+                        buildRow("Criado por", "<a href='#'>Integração Growth</a>, 02/12/2025", "", "")
+                    ])}
+                </records-record-layout-block>
+            `;
+        }
+    </script>
+</body>
+</html>
