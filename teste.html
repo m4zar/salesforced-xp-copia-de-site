@@ -475,10 +475,18 @@
                 errorDiv.classList.add('hidden');
                 console.log('✅ Login bem-sucedido');
                 checkAuthAndRender();
+
                 // Inicializar dados após login
                 if (typeof initData === 'function') {
                     initData();
                 }
+
+                // Configurar scroll infinito (CRÍTICO: precisa ser após o DOM estar visível)
+                setTimeout(() => {
+                    setupInfiniteScroll();
+                    startTimestampUpdates();
+                    renderAllSubTabs();
+                }, 100);
             } else {
                 errorDiv.textContent = 'Usuário ou senha inválidos';
                 errorDiv.classList.remove('hidden');
